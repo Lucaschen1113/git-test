@@ -1,0 +1,121 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>ArcGIS API for JavaScript Tutorials: Display a map</title>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.23/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.23/"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.js"integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+
+      function getWaterStationsData() {
+          return $.ajax({
+              method: 'GET',
+              url: 'https://fhy.wra.gov.tw/WraApi/v1/Water/Station',
+              data: {},
+              success: function (data) {
+                  //let result = data;
+                  return data;
+                  //console.log(result);
+              }
+          });
+      }
+
+      function getWaterStatesData() {
+          return $.ajax({
+              method: 'GET',
+              url: 'https://fhy.wra.gov.tw/WraApi/v1/Water/RealTimeInfo',
+              data: {},
+              success: function (data) {
+                  //let result = data;
+                  return data;
+                  //console.log(result);
+              }
+          });
+      }
+    </script>
+
+    <script>
+      require(["esri/config","esri/Map", "esri/views/MapView","esri/Graphic","esri/layers/GraphicsLayer",], function (esriConfig,Map, MapView,Graphic,GraphicsLayer) {
+
+        esriConfig.apiKey = "AAPK8dab77493f244ad49bba5000ccf5e9a67BetKrFlLzdjtpn7IExWhc4N1lV2LeVxcA_g9F6RkSQQCWGnNYWdBw1tspS_OQit";
+
+        const map = new Map({
+          basemap: "arcgis-topographic" // Basemap layer service
+        });
+
+        const view = new MapView({
+          map: map,
+          center: [121.55, 25.05], // Longitude, latitude
+          zoom: 13, // Zoom level
+          container: "viewDiv" // Div element
+        });
+
+        const graphicsLayer = new GraphicsLayer();
+        $.when( getWaterStationsData(),getWaterStatesData()).done(function (WaterStations, WaterStates) {
+            //let d1 = $.parseJSON(WaterStations[0]);
+            //let d2 = $.parseJSON(WaterStates[0]);
+            let d1 = WaterStations[0];
+            d1 = d1.filter(obj => 'Longitude' in obj);
+            d1 = d1.filter(obj => 'Latitude' in obj);
+            let d2 = WaterStates[0];
+            d2.forEach(x => {
+                var tempData = d1.filter(function (item) {
+                    return item.StationNo != undefined && item.StationNo != null && item.StationNo != "undefined" && item.StationNo == x.StationNo;
+                });
+                console.log(tempData);
+                if (tempData.length > 0) {
+                    const point = { //Create a point
+                        type: "point",
+                        longitude: tempData[0].Longitude,
+                        latitude: tempData[0].Latitude
+                    };
+
+                    const simpleMarkerSymbol = {
+                        type: "simple-marker",
+                        color: [30, 144, 255],  // Orange
+                        outline: {
+                            color: [255, 255, 255], // White
+                            width: 1
+                        }
+                    };
+                    const popupTemplate = {
+                        title: "{Name}",
+                        content: "{Description}"
+                    }
+                    const attributes = {
+                        Name: tempData[0].StationName,
+                        Description: "目前水位：" + x.WaterLevel + "<br>" + "資料時間：" + x.Time
+                    }
+                    const pointGraphic = new Graphic({
+                        geometry: point,
+                        symbol: simpleMarkerSymbol,
+                        attributes: attributes,
+                        popupTemplate: popupTemplate
+                    });
+                    graphicsLayer.add(pointGraphic);
+                }
+            });
+        });
+
+      });
+    </script>
+
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>
